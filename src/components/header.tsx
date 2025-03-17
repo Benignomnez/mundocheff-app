@@ -5,12 +5,37 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { useAuth } from "@/lib/auth-context";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useRouter } from "next/navigation";
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { user, logout } = useAuth();
+  const router = useRouter();
 
   const toggleMobileMenu = () => {
     setMobileMenuOpen(!mobileMenuOpen);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      router.push("/");
+    } catch (error) {
+      console.error("Error al cerrar sesión:", error);
+    }
+  };
+
+  const getUserInitials = () => {
+    if (!user || !user.email) return "U";
+    return user.email.charAt(0).toUpperCase();
   };
 
   return (
@@ -69,85 +94,134 @@ export function Header() {
               </div>
             </div>
             <ThemeToggle />
-            <Button
-              className="bg-emerald-600 hover:bg-emerald-700 hidden md:inline-flex"
-              size="sm"
-            >
-              <Link href="/onboarding">Get Meal Plan</Link>
-            </Button>
-            <Button
-              variant="ghost"
+
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Avatar className="cursor-pointer">
+                    <AvatarFallback className="bg-emerald-600 text-white">
+                      {getUserInitials()}
+                    </AvatarFallback>
+                  </Avatar>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem>
+                    <Link href="/profile" className="w-full">
+                      Mi Perfil
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <Link href="/onboarding" className="w-full">
+                      Mis Preferencias
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleLogout}>
+                    Cerrar Sesión
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button
+                className="bg-emerald-600 hover:bg-emerald-700 hidden md:inline-flex"
+                asChild
+              >
+                <Link href="/auth/login">Iniciar Sesión</Link>
+              </Button>
+            )}
+
+            <button
               className="md:hidden"
-              size="icon"
               onClick={toggleMobileMenu}
+              aria-label="Toggle menu"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5"
+                className="h-6 w-6 text-gray-700 dark:text-gray-300"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 6h16M4 12h16M4 18h16"
-                />
+                {mobileMenuOpen ? (
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                ) : (
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 6h16M4 12h16M4 18h16"
+                  />
+                )}
               </svg>
-              <span className="sr-only">Toggle Menu</span>
-            </Button>
+            </button>
           </div>
         </div>
 
-        {/* Mobile Menu */}
+        {/* Mobile menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden py-4 border-t mt-4">
-            <div className="flex flex-col space-y-3">
+          <div className="md:hidden mt-4 pb-4">
+            <div className="flex flex-col space-y-2">
               <Link
                 href="/browse"
-                className="px-3 py-2 text-gray-700 hover:text-emerald-600"
+                className="px-3 py-2 text-gray-700 hover:text-emerald-600 dark:text-gray-300 dark:hover:text-emerald-400"
+                onClick={() => setMobileMenuOpen(false)}
               >
                 Browse
               </Link>
               <Link
                 href="/meal-plan"
-                className="px-3 py-2 text-gray-700 hover:text-emerald-600"
+                className="px-3 py-2 text-gray-700 hover:text-emerald-600 dark:text-gray-300 dark:hover:text-emerald-400"
+                onClick={() => setMobileMenuOpen(false)}
               >
                 Meal Plans
               </Link>
               <Link
                 href="/onboarding"
-                className="px-3 py-2 text-gray-700 hover:text-emerald-600"
+                className="px-3 py-2 text-gray-700 hover:text-emerald-600 dark:text-gray-300 dark:hover:text-emerald-400"
+                onClick={() => setMobileMenuOpen(false)}
               >
                 Preferences
               </Link>
-              <div className="relative mt-2">
-                <Input
-                  type="search"
-                  placeholder="Search recipes..."
-                  className="w-full"
-                />
-                <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-4 w-4 text-gray-400"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
+              {!user && (
+                <Link
+                  href="/auth/login"
+                  className="px-3 py-2 text-gray-700 hover:text-emerald-600 dark:text-gray-300 dark:hover:text-emerald-400"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Iniciar Sesión
+                </Link>
+              )}
+              {user && (
+                <>
+                  <Link
+                    href="/profile"
+                    className="px-3 py-2 text-gray-700 hover:text-emerald-600 dark:text-gray-300 dark:hover:text-emerald-400"
+                    onClick={() => setMobileMenuOpen(false)}
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                    />
-                  </svg>
-                </div>
-              </div>
-              <Button className="bg-emerald-600 hover:bg-emerald-700 mt-2">
-                <Link href="/onboarding">Get Meal Plan</Link>
-              </Button>
+                    Mi Perfil
+                  </Link>
+                  <button
+                    onClick={() => {
+                      handleLogout();
+                      setMobileMenuOpen(false);
+                    }}
+                    className="px-3 py-2 text-left text-gray-700 hover:text-emerald-600 dark:text-gray-300 dark:hover:text-emerald-400"
+                  >
+                    Cerrar Sesión
+                  </button>
+                </>
+              )}
+            </div>
+            <div className="mt-4">
+              <Input
+                type="search"
+                placeholder="Search recipes..."
+                className="w-full"
+              />
             </div>
           </div>
         )}

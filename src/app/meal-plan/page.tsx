@@ -1,15 +1,27 @@
+"use client";
+
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useAuth } from "@/lib/auth-context";
+import { getUserPreferencesFromFirestore } from "@/lib/user-preferences";
+import { UserPreferences, MealPlan } from "@/lib/meal-plan";
+import { toast } from "sonner";
 
 export function generateStaticParams() {
-  return [{ id: 'default' }]; // Properly typed for the route
+  return [{ id: "default" }]; // Properly typed for the route
 }
 
 export default function MealPlanPage() {
-  // Example data for the meal plan
+  const [userPreferences, setUserPreferences] =
+    useState<UserPreferences | null>(null);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+
+  // Ejemplo de plan de comidas
   const mealPlan = {
     week: "June 10 - June 16, 2024",
     days: [
@@ -20,7 +32,8 @@ export default function MealPlanPage() {
             id: "1",
             type: "Breakfast",
             name: "Greek Yogurt with Berries",
-            image: "https://images.unsplash.com/photo-1488477181946-6428a0291777?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
+            image:
+              "https://images.unsplash.com/photo-1488477181946-6428a0291777?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
             calories: 320,
             prepTime: "5 min",
           },
@@ -28,7 +41,8 @@ export default function MealPlanPage() {
             id: "2",
             type: "Lunch",
             name: "Chicken Caesar Salad",
-            image: "https://images.unsplash.com/photo-1551248429-40975aa4de74?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
+            image:
+              "https://images.unsplash.com/photo-1551248429-40975aa4de74?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
             calories: 450,
             prepTime: "15 min",
           },
@@ -36,7 +50,8 @@ export default function MealPlanPage() {
             id: "3",
             type: "Dinner",
             name: "Baked Salmon with Vegetables",
-            image: "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
+            image:
+              "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
             calories: 520,
             prepTime: "25 min",
           },
@@ -49,123 +64,160 @@ export default function MealPlanPage() {
             id: "4",
             type: "Breakfast",
             name: "Avocado Toast with Egg",
-            image: "https://images.unsplash.com/photo-1525351484163-7529414344d8?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
+            image:
+              "https://images.unsplash.com/photo-1525351484163-7529414344d8?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
             calories: 350,
             prepTime: "10 min",
           },
           {
             id: "5",
             type: "Lunch",
-            name: "Vegetable Soup with Bread",
-            image: "https://images.unsplash.com/photo-1547592180-85f173990554?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-            calories: 380,
+            name: "Quinoa Bowl with Roasted Vegetables",
+            image:
+              "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
+            calories: 420,
             prepTime: "20 min",
           },
           {
             id: "6",
             type: "Dinner",
-            name: "Turkey Meatballs with Pasta",
-            image: "https://images.unsplash.com/photo-1563379926898-05f4575a45d8?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-            calories: 580,
+            name: "Grilled Chicken with Sweet Potato",
+            image:
+              "https://images.unsplash.com/photo-1532550907401-a500c9a57435?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
+            calories: 480,
             prepTime: "30 min",
-          },
-        ],
-      },
-      {
-        day: "Wednesday",
-        meals: [
-          {
-            id: "7",
-            type: "Breakfast",
-            name: "Berry Smoothie Bowl",
-            image: "https://images.unsplash.com/photo-1553530666-ba11a90a0868?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-            calories: 290,
-            prepTime: "10 min",
-          },
-          {
-            id: "8",
-            type: "Lunch",
-            name: "Mediterranean Wrap",
-            image: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-            calories: 420,
-            prepTime: "15 min",
-          },
-          {
-            id: "9",
-            type: "Dinner",
-            name: "Grilled Chicken with Quinoa",
-            image: "https://images.unsplash.com/photo-1532550907401-a500c9a57435?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-            calories: 550,
-            prepTime: "25 min",
           },
         ],
       },
     ],
   };
 
+  useEffect(() => {
+    const loadUserPreferences = async () => {
+      try {
+        let preferences: UserPreferences | null = null;
+
+        if (user) {
+          // Cargar desde Firebase si el usuario está autenticado
+          preferences = await getUserPreferencesFromFirestore(user.uid);
+        } else {
+          // Cargar desde localStorage si no está autenticado
+          const savedPreferences = localStorage.getItem("userPreferences");
+          if (savedPreferences) {
+            preferences = JSON.parse(savedPreferences);
+          }
+        }
+
+        setUserPreferences(preferences);
+      } catch (error) {
+        console.error("Error al cargar preferencias:", error);
+        toast.error("Error al cargar tus preferencias");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadUserPreferences();
+  }, [user]);
+
   return (
     <>
       <Header />
-      <main className="container mx-auto px-4 md:px-6 py-12">
-        <div className="max-w-5xl mx-auto">
-          <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
+      <main className="container mx-auto px-4 md:px-6 py-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
             <div>
-              <h1 className="text-3xl font-bold mb-2">Your Weekly Meal Plan</h1>
-              <p className="text-gray-600 mb-2">{mealPlan.week}</p>
-              <p className="text-sm text-gray-500">Based on your dietary preferences</p>
+              <h1 className="text-3xl font-bold mb-2">
+                Tu Plan de Comidas Semanal
+              </h1>
+              {userPreferences && (
+                <p className="text-muted-foreground">
+                  Personalizado para tus preferencias:
+                  {userPreferences.dietary.length > 0 && (
+                    <span className="font-medium">
+                      {" "}
+                      {userPreferences.dietary.join(", ")}
+                    </span>
+                  )}
+                  {userPreferences.cuisines.length > 0 && (
+                    <span className="font-medium">
+                      {" "}
+                      • {userPreferences.cuisines.join(", ")}
+                    </span>
+                  )}
+                  <span className="font-medium">
+                    {" "}
+                    • {userPreferences.calorieRange} calorías
+                  </span>
+                </p>
+              )}
+              {!userPreferences && !loading && (
+                <p className="text-muted-foreground">
+                  <Link
+                    href="/onboarding"
+                    className="text-primary hover:underline"
+                  >
+                    Configura tus preferencias
+                  </Link>{" "}
+                  para un plan personalizado.
+                </p>
+              )}
+              {loading && (
+                <p className="text-muted-foreground">
+                  Cargando tus preferencias...
+                </p>
+              )}
             </div>
-            <div className="mt-4 md:mt-0 flex space-x-4">
-              <Button className="bg-emerald-600 hover:bg-emerald-700">
-                Print Meal Plan
-              </Button>
-              <Button variant="outline" className="border-emerald-600 text-emerald-600 hover:bg-emerald-50">
-                <Link href="/onboarding">Adjust Preferences</Link>
-              </Button>
-            </div>
+            <Button className="mt-4 md:mt-0" asChild>
+              <Link href="/onboarding">Editar Preferencias</Link>
+            </Button>
           </div>
 
-          <div className="space-y-8">
-            {mealPlan.days.map((day) => (
-              <div key={day.day} className="rounded-lg border overflow-hidden">
-                <div className="bg-gray-50 p-4 border-b">
-                  <h2 className="text-xl font-semibold">{day.day}</h2>
-                </div>
-                <div className="p-4">
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold mb-4">{mealPlan.week}</h2>
+            <div className="space-y-8">
+              {mealPlan.days.map((day) => (
+                <div key={day.day}>
+                  <h3 className="text-lg font-medium mb-4">{day.day}</h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {day.meals.map((meal) => (
                       <Card key={meal.id} className="overflow-hidden">
-                        <div className="relative h-48 w-full">
+                        <div className="aspect-video relative">
                           <img
                             src={meal.image}
                             alt={meal.name}
-                            className="absolute inset-0 w-full h-full object-cover"
-                            crossOrigin="anonymous"
+                            className="object-cover w-full h-full"
                           />
-                        </div>
-                        <CardContent className="p-4">
-                          <div className="text-sm font-medium text-emerald-600 mb-1">
+                          <div className="absolute top-2 left-2 bg-black bg-opacity-70 text-white px-2 py-1 rounded text-sm">
                             {meal.type}
                           </div>
-                          <h3 className="font-semibold text-lg mb-2">{meal.name}</h3>
-                          <div className="flex justify-between text-sm text-gray-500">
-                            <span>{meal.calories} calories</span>
+                        </div>
+                        <CardContent className="p-4">
+                          <h4 className="font-medium mb-2">{meal.name}</h4>
+                          <div className="flex justify-between text-sm text-muted-foreground">
+                            <span>{meal.calories} cal</span>
                             <span>{meal.prepTime}</span>
                           </div>
-                          <Button asChild className="w-full mt-3 bg-emerald-600 hover:bg-emerald-700">
-                            <Link href={`/recipe/${meal.id}`}>View Recipe</Link>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full mt-3"
+                            asChild
+                          >
+                            <Link href={`/recipe/${meal.id}`}>Ver Receta</Link>
                           </Button>
                         </CardContent>
                       </Card>
                     ))}
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
 
-          <div className="mt-8 flex justify-center">
-            <Button className="bg-emerald-600 hover:bg-emerald-700">
-              Generate New Plan
+          <div className="text-center">
+            <Button variant="outline" asChild>
+              <Link href="/browse">Explorar Más Recetas</Link>
             </Button>
           </div>
         </div>
