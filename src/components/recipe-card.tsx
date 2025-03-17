@@ -20,10 +20,27 @@ export function RecipeCard({
   servings,
 }: RecipeCardProps) {
   // Asegurarse de que la URL de la imagen tenga el dominio completo
-  const imageUrl =
-    image && !image.startsWith("http")
-      ? `https://spoonacular.com/recipeImages/${image}`
-      : image;
+  // Formato de Spoonacular: https://spoonacular.com/recipeImages/[recipe-id]-[size].jpg
+  const getImageUrl = () => {
+    if (!image) return "";
+
+    // Si ya es una URL completa, usarla
+    if (image.startsWith("http")) return image;
+
+    // Si es solo un nombre de archivo, construir la URL completa
+    if (
+      image.includes(".jpg") ||
+      image.includes(".png") ||
+      image.includes(".jpeg")
+    ) {
+      return `https://spoonacular.com/recipeImages/${image}`;
+    }
+
+    // Si es solo un ID, construir la URL con el tamaño 556x370
+    return `https://spoonacular.com/recipeImages/${id}-556x370.jpg`;
+  };
+
+  const imageUrl = getImageUrl();
 
   return (
     <Card className="overflow-hidden group">
@@ -53,16 +70,26 @@ export function RecipeCard({
             className="absolute inset-0 w-full h-full object-cover transition-transform group-hover:scale-105"
             crossOrigin="anonymous"
             onError={(e) => {
-              // Si la imagen falla, intentar con una URL alternativa
+              // Si la imagen falla, intentar con diferentes formatos
               const target = e.target as HTMLImageElement;
-              if (!target.src.includes("spoonacular.com/recipeImages/")) {
-                target.src = `https://spoonacular.com/recipeImages/${image}`;
-              } else if (
-                target.src.includes("recipeImages") &&
-                !target.src.includes("-556x370")
-              ) {
-                // Intentar con un tamaño específico si aún falla
-                target.src = `https://spoonacular.com/recipeImages/${image}-556x370.jpg`;
+              const currentSrc = target.src;
+
+              // Intentar con formato 556x370
+              if (!currentSrc.includes("-556x370")) {
+                target.src = `https://spoonacular.com/recipeImages/${id}-556x370.jpg`;
+              }
+              // Intentar con formato 312x231
+              else if (!currentSrc.includes("-312x231")) {
+                target.src = `https://spoonacular.com/recipeImages/${id}-312x231.jpg`;
+              }
+              // Intentar con formato 240x150
+              else if (!currentSrc.includes("-240x150")) {
+                target.src = `https://spoonacular.com/recipeImages/${id}-240x150.jpg`;
+              }
+              // Si todo falla, mostrar una imagen de placeholder
+              else {
+                target.src =
+                  "https://spoonacular.com/images/spoonacular-logo-b.svg";
               }
             }}
           />
