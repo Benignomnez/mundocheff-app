@@ -1,72 +1,61 @@
-"use client";
-
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { Button } from "@/components/ui/button";
-import { useState, useEffect } from "react";
 import { getRecipeById, getRecipeNutrition, Recipe } from "@/lib/spoonacular";
-import { toast } from "sonner";
+import Image from "next/image";
+import RecipeActions from "./recipe-actions";
+import RecipeImage from "./recipe-image";
 
-export default function RecipePage({ params }: { params: { id: string } }) {
-  const [recipe, setRecipe] = useState<Recipe | null>(null);
-  const [nutrition, setNutrition] = useState<any | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+export default async function RecipePage({
+  params,
+}: {
+  params: { id: string };
+}) {
+  // Obtener datos de forma asíncrona
+  // Corregir el error de Next.js usando await para params
+  const resolvedParams = await params;
+  const recipeId = parseInt(resolvedParams.id);
+  let recipe: Recipe | null = null;
+  let nutrition: any | null = null;
+  let error: string | null = null;
 
-  useEffect(() => {
-    const fetchRecipeDetails = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        // Obtener detalles de la receta
-        const recipeData = await getRecipeById(parseInt(params.id));
-        setRecipe(recipeData);
+  try {
+    // Obtener detalles de la receta
+    recipe = await getRecipeById(recipeId);
 
-        // Obtener información nutricional
-        const nutritionData = await getRecipeNutrition(parseInt(params.id));
-        setNutrition(nutritionData);
-      } catch (err) {
-        console.error("Error al cargar los detalles de la receta:", err);
-        setError(
-          "No se pudo cargar la receta. Por favor, inténtalo de nuevo más tarde."
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchRecipeDetails();
-  }, [params.id]);
-
-  // Función para limpiar el HTML de la descripción
-  const cleanHtml = (html: string) => {
-    const doc = new DOMParser().parseFromString(html, "text/html");
-    return doc.body.textContent || "";
-  };
-
-  // Función para guardar la receta (simulada)
-  const handleSaveRecipe = () => {
-    toast.success("Receta guardada en favoritos");
-  };
-
-  // Función para imprimir la receta
-  const handlePrintRecipe = () => {
-    window.print();
-  };
-
-  if (loading) {
-    return (
-      <>
-        <Header />
-        <main className="container mx-auto px-4 md:px-6 py-12">
-          <div className="flex justify-center items-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-600"></div>
-          </div>
-        </main>
-        <Footer />
-      </>
-    );
+    // Obtener información nutricional
+    nutrition = await getRecipeNutrition(recipeId);
+  } catch (err) {
+    console.error("Error al cargar los detalles de la receta:", err);
+    error =
+      "No se pudo cargar la receta. Por favor, inténtalo de nuevo más tarde.";
   }
+
+  // Función para limpiar el HTML de la descripción (ahora en el cliente)
+  const cleanHtml = (html: string) => {
+    return html.replace(/<\/?[^>]+(>|$)/g, "");
+  };
+
+  // Asegurarse de que la URL de la imagen tenga el dominio completo
+  // Formato de Spoonacular: https://spoonacular.com/recipeImages/[recipe-id]-[size].jpg
+  const getImageUrl = () => {
+    if (!recipe?.image) return "";
+
+    // Si ya es una URL completa, usarla
+    if (recipe.image.startsWith("http")) return recipe.image;
+
+    // Si es solo un nombre de archivo, construir la URL completa
+    if (
+      recipe.image.includes(".jpg") ||
+      recipe.image.includes(".png") ||
+      recipe.image.includes(".jpeg")
+    ) {
+      return `https://spoonacular.com/recipeImages/${recipe.image}`;
+    }
+
+    // Si es solo un ID, construir la URL con el tamaño 636x393 (más grande para la página de detalle)
+    return `https://spoonacular.com/recipeImages/${recipe.id}-636x393.jpg`;
+  };
 
   if (error || !recipe) {
     return (
@@ -85,27 +74,6 @@ export default function RecipePage({ params }: { params: { id: string } }) {
       </>
     );
   }
-
-  // Asegurarse de que la URL de la imagen tenga el dominio completo
-  // Formato de Spoonacular: https://spoonacular.com/recipeImages/[recipe-id]-[size].jpg
-  const getImageUrl = () => {
-    if (!recipe.image) return "";
-
-    // Si ya es una URL completa, usarla
-    if (recipe.image.startsWith("http")) return recipe.image;
-
-    // Si es solo un nombre de archivo, construir la URL completa
-    if (
-      recipe.image.includes(".jpg") ||
-      recipe.image.includes(".png") ||
-      recipe.image.includes(".jpeg")
-    ) {
-      return `https://spoonacular.com/recipeImages/${recipe.image}`;
-    }
-
-    // Si es solo un ID, construir la URL con el tamaño 636x393 (más grande para la página de detalle)
-    return `https://spoonacular.com/recipeImages/${recipe.id}-636x393.jpg`;
-  };
 
   const imageUrl = getImageUrl();
 
@@ -141,34 +109,11 @@ export default function RecipePage({ params }: { params: { id: string } }) {
           </div>
 
           <div className="relative h-80 md:h-96 w-full mb-8 rounded-lg overflow-hidden">
-            <img
-              src={imageUrl}
-              alt={recipe.title}
-              className="absolute inset-0 w-full h-full object-cover"
-              crossOrigin="anonymous"
-              onError={(e) => {
-                // Si la imagen falla, intentar con diferentes formatos
-                const target = e.target as HTMLImageElement;
-                const currentSrc = target.src;
-
-                // Intentar con formato 636x393 (más grande para la página de detalle)
-                if (!currentSrc.includes("-636x393")) {
-                  target.src = `https://spoonacular.com/recipeImages/${recipe.id}-636x393.jpg`;
-                }
-                // Intentar con formato 556x370
-                else if (!currentSrc.includes("-556x370")) {
-                  target.src = `https://spoonacular.com/recipeImages/${recipe.id}-556x370.jpg`;
-                }
-                // Intentar con formato 312x231
-                else if (!currentSrc.includes("-312x231")) {
-                  target.src = `https://spoonacular.com/recipeImages/${recipe.id}-312x231.jpg`;
-                }
-                // Si todo falla, mostrar una imagen de placeholder
-                else {
-                  target.src =
-                    "https://spoonacular.com/images/spoonacular-logo-b.svg";
-                }
-              }}
+            {/* Usar componente cliente para manejar errores de carga de imagen */}
+            <RecipeImage
+              imageUrl={imageUrl}
+              recipeId={recipe.id}
+              title={recipe.title}
             />
           </div>
 
@@ -277,19 +222,7 @@ export default function RecipePage({ params }: { params: { id: string } }) {
           </div>
 
           <div className="flex space-x-4">
-            <Button
-              className="bg-emerald-600 hover:bg-emerald-700"
-              onClick={handleSaveRecipe}
-            >
-              Guardar Receta
-            </Button>
-            <Button
-              variant="outline"
-              className="border-emerald-600 text-emerald-600 hover:bg-emerald-50"
-              onClick={handlePrintRecipe}
-            >
-              Imprimir Receta
-            </Button>
+            <RecipeActions recipeId={recipe.id} recipeTitle={recipe.title} />
           </div>
 
           {/* Fuente de la receta */}

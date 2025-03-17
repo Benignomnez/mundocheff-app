@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
-import Image from "next/image";
+import RecipeCardImage from "./recipe-card-image";
 
 interface RecipeCardProps {
   id: number | string;
@@ -46,53 +46,7 @@ export function RecipeCard({
     <Card className="overflow-hidden group">
       <Link href={`/recipe/${id}`}>
         <div className="relative h-48 w-full">
-          <div className="absolute inset-0 bg-gray-200 flex items-center justify-center">
-            {/* Placeholder when image is loading or failed to load */}
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-12 w-12 text-gray-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-              />
-            </svg>
-          </div>
-          {/* Usar img con onError para manejar errores de carga */}
-          <img
-            src={imageUrl}
-            alt={title}
-            className="absolute inset-0 w-full h-full object-cover transition-transform group-hover:scale-105"
-            crossOrigin="anonymous"
-            onError={(e) => {
-              // Si la imagen falla, intentar con diferentes formatos
-              const target = e.target as HTMLImageElement;
-              const currentSrc = target.src;
-
-              // Intentar con formato 556x370
-              if (!currentSrc.includes("-556x370")) {
-                target.src = `https://spoonacular.com/recipeImages/${id}-556x370.jpg`;
-              }
-              // Intentar con formato 312x231
-              else if (!currentSrc.includes("-312x231")) {
-                target.src = `https://spoonacular.com/recipeImages/${id}-312x231.jpg`;
-              }
-              // Intentar con formato 240x150
-              else if (!currentSrc.includes("-240x150")) {
-                target.src = `https://spoonacular.com/recipeImages/${id}-240x150.jpg`;
-              }
-              // Si todo falla, mostrar una imagen de placeholder
-              else {
-                target.src =
-                  "https://spoonacular.com/images/spoonacular-logo-b.svg";
-              }
-            }}
-          />
+          <RecipeCardImage imageUrl={imageUrl} recipeId={id} title={title} />
         </div>
       </Link>
       <CardContent className="p-4">
