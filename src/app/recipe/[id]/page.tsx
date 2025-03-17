@@ -86,6 +86,12 @@ export default function RecipePage({ params }: { params: { id: string } }) {
     );
   }
 
+  // Asegurarse de que la URL de la imagen tenga el dominio completo
+  const imageUrl =
+    recipe.image && !recipe.image.startsWith("http")
+      ? `https://spoonacular.com/recipeImages/${recipe.image}`
+      : recipe.image;
+
   return (
     <>
       <Header />
@@ -119,9 +125,23 @@ export default function RecipePage({ params }: { params: { id: string } }) {
 
           <div className="relative h-80 md:h-96 w-full mb-8 rounded-lg overflow-hidden">
             <img
-              src={recipe.image}
+              src={imageUrl}
               alt={recipe.title}
               className="absolute inset-0 w-full h-full object-cover"
+              crossOrigin="anonymous"
+              onError={(e) => {
+                // Si la imagen falla, intentar con una URL alternativa
+                const target = e.target as HTMLImageElement;
+                if (!target.src.includes("spoonacular.com/recipeImages/")) {
+                  target.src = `https://spoonacular.com/recipeImages/${recipe.image}`;
+                } else if (
+                  target.src.includes("recipeImages") &&
+                  !target.src.includes("-556x370")
+                ) {
+                  // Intentar con un tamaño específico si aún falla
+                  target.src = `https://spoonacular.com/recipeImages/${recipe.image}-556x370.jpg`;
+                }
+              }}
             />
           </div>
 

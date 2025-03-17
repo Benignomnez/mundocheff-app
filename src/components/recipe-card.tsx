@@ -1,5 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
+import Image from "next/image";
 
 interface RecipeCardProps {
   id: number | string;
@@ -18,6 +19,12 @@ export function RecipeCard({
   readyInMinutes,
   servings,
 }: RecipeCardProps) {
+  // Asegurarse de que la URL de la imagen tenga el dominio completo
+  const imageUrl =
+    image && !image.startsWith("http")
+      ? `https://spoonacular.com/recipeImages/${image}`
+      : image;
+
   return (
     <Card className="overflow-hidden group">
       <Link href={`/recipe/${id}`}>
@@ -39,12 +46,25 @@ export function RecipeCard({
               />
             </svg>
           </div>
-          {/* Use img tag directly instead of next/image to avoid hydration issues */}
+          {/* Usar img con onError para manejar errores de carga */}
           <img
-            src={image}
+            src={imageUrl}
             alt={title}
             className="absolute inset-0 w-full h-full object-cover transition-transform group-hover:scale-105"
             crossOrigin="anonymous"
+            onError={(e) => {
+              // Si la imagen falla, intentar con una URL alternativa
+              const target = e.target as HTMLImageElement;
+              if (!target.src.includes("spoonacular.com/recipeImages/")) {
+                target.src = `https://spoonacular.com/recipeImages/${image}`;
+              } else if (
+                target.src.includes("recipeImages") &&
+                !target.src.includes("-556x370")
+              ) {
+                // Intentar con un tamaño específico si aún falla
+                target.src = `https://spoonacular.com/recipeImages/${image}-556x370.jpg`;
+              }
+            }}
           />
         </div>
       </Link>
