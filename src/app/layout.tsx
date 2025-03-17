@@ -4,6 +4,7 @@ import { Inter } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider } from "@/lib/auth-context";
 import { Toaster } from "@/components/ui/sonner";
+import { FirebaseAnalytics } from "@/components/firebase-analytics";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -29,6 +30,7 @@ export default function RootLayout({
               {children}
             </main>
             <Toaster />
+            <FirebaseAnalytics />
           </ThemeProvider>
         </AuthProvider>
       </body>

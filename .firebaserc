@@ -1,0 +1,14 @@
+{
+  "projects": {
+    "default": "mundocheff"
+  },
+  "targets": {
+    "mundocheff": {
+      "hosting": {
+        "mundocheff-31f33": [
+          "mundocheff-31f33"
+        ]
+      }
+    }
+  }
+}

@@ -8,90 +8,69 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { getUserPreferencesFromFirestore } from "@/lib/user-preferences";
-import { UserPreferences, MealPlan } from "@/lib/meal-plan";
+import { UserPreferences } from "@/lib/meal-plan";
 import { toast } from "sonner";
+import { ProtectedRoute } from "@/components/auth/protected-route";
+import { generateMealPlan } from "@/lib/spoonacular";
 
-export function generateStaticParams() {
-  return [{ id: "default" }]; // Properly typed for the route
+// Esta función es necesaria para la exportación estática
+export const dynamic = "force-static";
+
+interface SpoonacularMeal {
+  id: number;
+  title: string;
+  readyInMinutes: number;
+  servings: number;
+  sourceUrl: string;
+  image: string;
+  imageType: string;
+  nutrition?: {
+    nutrients: {
+      name: string;
+      amount: number;
+      unit: string;
+    }[];
+  };
+}
+
+interface SpoonacularDay {
+  meals: SpoonacularMeal[];
+  nutrients: {
+    calories: number;
+    protein: number;
+    fat: number;
+    carbohydrates: number;
+  };
+}
+
+interface SpoonacularMealPlan {
+  meals?: SpoonacularMeal[];
+  nutrients?: {
+    calories: number;
+    protein: number;
+    fat: number;
+    carbohydrates: number;
+  };
+  week?: {
+    monday: SpoonacularDay;
+    tuesday: SpoonacularDay;
+    wednesday: SpoonacularDay;
+    thursday: SpoonacularDay;
+    friday: SpoonacularDay;
+    saturday: SpoonacularDay;
+    sunday: SpoonacularDay;
+  };
 }
 
 export default function MealPlanPage() {
   const [userPreferences, setUserPreferences] =
     useState<UserPreferences | null>(null);
+  const [mealPlan, setMealPlan] = useState<SpoonacularMealPlan | null>(null);
   const [loading, setLoading] = useState(true);
+  const [generatingPlan, setGeneratingPlan] = useState(false);
   const { user } = useAuth();
 
-  // Ejemplo de plan de comidas
-  const mealPlan = {
-    week: "June 10 - June 16, 2024",
-    days: [
-      {
-        day: "Monday",
-        meals: [
-          {
-            id: "1",
-            type: "Breakfast",
-            name: "Greek Yogurt with Berries",
-            image:
-              "https://images.unsplash.com/photo-1488477181946-6428a0291777?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-            calories: 320,
-            prepTime: "5 min",
-          },
-          {
-            id: "2",
-            type: "Lunch",
-            name: "Chicken Caesar Salad",
-            image:
-              "https://images.unsplash.com/photo-1551248429-40975aa4de74?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-            calories: 450,
-            prepTime: "15 min",
-          },
-          {
-            id: "3",
-            type: "Dinner",
-            name: "Baked Salmon with Vegetables",
-            image:
-              "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-            calories: 520,
-            prepTime: "25 min",
-          },
-        ],
-      },
-      {
-        day: "Tuesday",
-        meals: [
-          {
-            id: "4",
-            type: "Breakfast",
-            name: "Avocado Toast with Egg",
-            image:
-              "https://images.unsplash.com/photo-1525351484163-7529414344d8?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-            calories: 350,
-            prepTime: "10 min",
-          },
-          {
-            id: "5",
-            type: "Lunch",
-            name: "Quinoa Bowl with Roasted Vegetables",
-            image:
-              "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-            calories: 420,
-            prepTime: "20 min",
-          },
-          {
-            id: "6",
-            type: "Dinner",
-            name: "Grilled Chicken with Sweet Potato",
-            image:
-              "https://images.unsplash.com/photo-1532550907401-a500c9a57435?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-            calories: 480,
-            prepTime: "30 min",
-          },
-        ],
-      },
-    ],
-  };
-
+  // Cargar preferencias del usuario
   useEffect(() => {
     const loadUserPreferences = async () => {
       try {
@@ -120,8 +99,85 @@ export default function MealPlanPage() {
     loadUserPreferences();
   }, [user]);
 
+  // Generar plan de comidas cuando se cargan las preferencias
+  useEffect(() => {
+    const generatePlan = async () => {
+      if (!userPreferences) return;
+
+      setGeneratingPlan(true);
+      try {
+        // Convertir preferencias a formato de Spoonacular
+        let diet: string | undefined;
+        if (userPreferences.dietary.includes("vegetarian")) {
+          diet = "vegetarian";
+        } else if (userPreferences.dietary.includes("vegan")) {
+          diet = "vegan";
+        } else if (userPreferences.dietary.includes("gluten-free")) {
+          diet = "gluten-free";
+        }
+
+        // Convertir rango de calorías
+        let targetCalories: number | undefined;
+        switch (userPreferences.calorieRange) {
+          case "low":
+            targetCalories = 1500;
+            break;
+          case "medium":
+            targetCalories = 2000;
+            break;
+          case "high":
+            targetCalories = 2500;
+            break;
+        }
+
+        // Excluir ingredientes basados en preferencias
+        let exclude: string | undefined;
+        if (userPreferences.dietary.includes("dairy-free")) {
+          exclude = "dairy";
+        }
+
+        // Generar plan de comidas
+        const plan = await generateMealPlan(
+          "week",
+          targetCalories,
+          diet,
+          exclude
+        );
+
+        setMealPlan(plan);
+      } catch (error) {
+        console.error("Error al generar plan de comidas:", error);
+        toast.error("Error al generar tu plan de comidas");
+      } finally {
+        setGeneratingPlan(false);
+      }
+    };
+
+    if (userPreferences && !mealPlan) {
+      generatePlan();
+    }
+  }, [userPreferences, mealPlan]);
+
+  // Función para obtener calorías de una comida
+  const getMealCalories = (meal: SpoonacularMeal): number => {
+    if (meal.nutrition && meal.nutrition.nutrients) {
+      const calorieInfo = meal.nutrition.nutrients.find(
+        (n) => n.name === "Calories"
+      );
+      if (calorieInfo) {
+        return Math.round(calorieInfo.amount);
+      }
+    }
+    return 0;
+  };
+
+  // Función para regenerar el plan de comidas
+  const handleRegeneratePlan = () => {
+    setMealPlan(null);
+  };
+
   return (
-    <>
+    <ProtectedRoute>
       <Header />
       <main className="container mx-auto px-4 md:px-6 py-8">
         <div className="max-w-4xl mx-auto">
@@ -168,35 +224,57 @@ export default function MealPlanPage() {
                 </p>
               )}
             </div>
-            <Button className="mt-4 md:mt-0" asChild>
-              <Link href="/onboarding">Editar Preferencias</Link>
-            </Button>
+            <div className="mt-4 md:mt-0 flex gap-2">
+              <Button
+                onClick={handleRegeneratePlan}
+                disabled={generatingPlan || !userPreferences}
+              >
+                Regenerar Plan
+              </Button>
+              <Button variant="outline" asChild>
+                <Link href="/onboarding">Editar Preferencias</Link>
+              </Button>
+            </div>
           </div>
 
-          <div className="mb-8">
-            <h2 className="text-xl font-semibold mb-4">{mealPlan.week}</h2>
+          {/* Mostrar cargando */}
+          {(loading || generatingPlan) && (
+            <div className="flex justify-center items-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-600"></div>
+            </div>
+          )}
+
+          {/* Mostrar plan de comidas */}
+          {!loading && !generatingPlan && mealPlan && mealPlan.week && (
             <div className="space-y-8">
-              {mealPlan.days.map((day) => (
-                <div key={day.day}>
-                  <h3 className="text-lg font-medium mb-4">{day.day}</h3>
+              {Object.entries(mealPlan.week).map(([day, dayPlan]) => (
+                <div key={day}>
+                  <h3 className="text-lg font-medium mb-4 capitalize">{day}</h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {day.meals.map((meal) => (
-                      <Card key={meal.id} className="overflow-hidden">
+                    {dayPlan.meals.map((meal, index) => (
+                      <Card
+                        key={`${meal.id}-${index}`}
+                        className="overflow-hidden"
+                      >
                         <div className="aspect-video relative">
                           <img
                             src={meal.image}
-                            alt={meal.name}
+                            alt={meal.title}
                             className="object-cover w-full h-full"
                           />
                           <div className="absolute top-2 left-2 bg-black bg-opacity-70 text-white px-2 py-1 rounded text-sm">
-                            {meal.type}
+                            {index === 0
+                              ? "Desayuno"
+                              : index === 1
+                              ? "Almuerzo"
+                              : "Cena"}
                           </div>
                         </div>
                         <CardContent className="p-4">
-                          <h4 className="font-medium mb-2">{meal.name}</h4>
+                          <h4 className="font-medium mb-2">{meal.title}</h4>
                           <div className="flex justify-between text-sm text-muted-foreground">
-                            <span>{meal.calories} cal</span>
-                            <span>{meal.prepTime}</span>
+                            <span>{getMealCalories(meal)} cal</span>
+                            <span>{meal.readyInMinutes} min</span>
                           </div>
                           <Button
                             variant="outline"
@@ -210,12 +288,60 @@ export default function MealPlanPage() {
                       </Card>
                     ))}
                   </div>
+                  <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                    <p className="text-sm font-medium">
+                      Resumen nutricional del día:
+                    </p>
+                    <div className="flex flex-wrap gap-4 mt-2 text-sm">
+                      <span>
+                        Calorías: {Math.round(dayPlan.nutrients.calories)}
+                      </span>
+                      <span>
+                        Proteínas: {Math.round(dayPlan.nutrients.protein)}g
+                      </span>
+                      <span>Grasas: {Math.round(dayPlan.nutrients.fat)}g</span>
+                      <span>
+                        Carbohidratos:{" "}
+                        {Math.round(dayPlan.nutrients.carbohydrates)}g
+                      </span>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
-          </div>
+          )}
 
-          <div className="text-center">
+          {/* Mostrar mensaje si no hay preferencias */}
+          {!loading && !generatingPlan && !userPreferences && (
+            <div className="text-center py-12 bg-gray-50 rounded-lg">
+              <h2 className="text-xl font-semibold mb-2">
+                Configura tus preferencias
+              </h2>
+              <p className="text-gray-600 mb-6">
+                Para generar un plan de comidas personalizado, necesitamos
+                conocer tus preferencias alimenticias.
+              </p>
+              <Button asChild>
+                <Link href="/onboarding">Configurar Preferencias</Link>
+              </Button>
+            </div>
+          )}
+
+          {/* Mostrar mensaje si hay un error */}
+          {!loading && !generatingPlan && userPreferences && !mealPlan && (
+            <div className="text-center py-12 bg-gray-50 rounded-lg">
+              <h2 className="text-xl font-semibold mb-2">
+                No se pudo generar el plan de comidas
+              </h2>
+              <p className="text-gray-600 mb-6">
+                Hubo un problema al generar tu plan de comidas. Por favor,
+                inténtalo de nuevo.
+              </p>
+              <Button onClick={handleRegeneratePlan}>Intentar de nuevo</Button>
+            </div>
+          )}
+
+          <div className="text-center mt-8">
             <Button variant="outline" asChild>
               <Link href="/browse">Explorar Más Recetas</Link>
             </Button>
@@ -223,6 +349,6 @@ export default function MealPlanPage() {
         </div>
       </main>
       <Footer />
-    </>
+    </ProtectedRoute>
   );
 }

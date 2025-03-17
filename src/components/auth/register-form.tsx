@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/card";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { assignRole } from "@/lib/user-roles";
+import { toast } from "sonner";
 
 export function RegisterForm() {
   const [email, setEmail] = useState("");
@@ -35,7 +37,15 @@ export function RegisterForm() {
     setLoading(true);
 
     try {
-      await signUp(email, password);
+      // Registrar el usuario
+      const userCredential = await signUp(email, password);
+
+      // Asignar el rol de usuario por defecto
+      if (userCredential && userCredential.user) {
+        await assignRole(userCredential.user.uid, "user");
+      }
+
+      toast.success("Cuenta creada correctamente");
       router.push("/onboarding");
     } catch (error) {
       setError("Error al crear la cuenta. Intenta con otro correo.");

@@ -1,41 +1,26 @@
 "use client";
 
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { useAuth } from "@/lib/auth-context";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { useRouter } from "next/navigation";
+import { UserMenu } from "@/components/user-menu";
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { user, logout } = useAuth();
+  const [searchTerm, setSearchTerm] = useState("");
   const router = useRouter();
 
   const toggleMobileMenu = () => {
     setMobileMenuOpen(!mobileMenuOpen);
   };
 
-  const handleLogout = async () => {
-    try {
-      await logout();
-      router.push("/");
-    } catch (error) {
-      console.error("Error al cerrar sesión:", error);
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchTerm.trim()) {
+      router.push(`/browse?search=${encodeURIComponent(searchTerm)}`);
     }
-  };
-
-  const getUserInitials = () => {
-    if (!user || !user.email) return "U";
-    return user.email.charAt(0).toUpperCase();
   };
 
   return (
@@ -68,66 +53,46 @@ export function Header() {
             >
               Preferences
             </Link>
+            <Link
+              href="/firebase-setup"
+              className="px-3 py-2 text-gray-700 hover:text-emerald-600 dark:text-gray-300 dark:hover:text-emerald-400"
+            >
+              Firebase Setup
+            </Link>
           </div>
           <div className="flex items-center space-x-4">
             <div className="relative hidden md:block">
-              <Input
-                type="search"
-                placeholder="Search recipes..."
-                className="w-[200px] lg:w-[300px]"
-              />
-              <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4 text-gray-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
+              <form onSubmit={handleSearch}>
+                <Input
+                  type="search"
+                  placeholder="Search recipes..."
+                  className="w-[200px] lg:w-[300px]"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                <button
+                  type="submit"
+                  className="absolute inset-y-0 right-0 flex items-center pr-3"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                  />
-                </svg>
-              </div>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4 text-gray-400 hover:text-emerald-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                    />
+                  </svg>
+                </button>
+              </form>
             </div>
             <ThemeToggle />
-
-            {user ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Avatar className="cursor-pointer">
-                    <AvatarFallback className="bg-emerald-600 text-white">
-                      {getUserInitials()}
-                    </AvatarFallback>
-                  </Avatar>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem>
-                    <Link href="/profile" className="w-full">
-                      Mi Perfil
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <Link href="/onboarding" className="w-full">
-                      Mis Preferencias
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleLogout}>
-                    Cerrar Sesión
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
-              <Button
-                className="bg-emerald-600 hover:bg-emerald-700 hidden md:inline-flex"
-                asChild
-              >
-                <Link href="/auth/login">Iniciar Sesión</Link>
-              </Button>
-            )}
+            <UserMenu />
 
             <button
               className="md:hidden"
@@ -186,42 +151,59 @@ export function Header() {
               >
                 Preferences
               </Link>
-              {!user && (
-                <Link
-                  href="/auth/login"
-                  className="px-3 py-2 text-gray-700 hover:text-emerald-600 dark:text-gray-300 dark:hover:text-emerald-400"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Iniciar Sesión
-                </Link>
-              )}
-              {user && (
-                <>
-                  <Link
-                    href="/profile"
-                    className="px-3 py-2 text-gray-700 hover:text-emerald-600 dark:text-gray-300 dark:hover:text-emerald-400"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Mi Perfil
-                  </Link>
-                  <button
-                    onClick={() => {
-                      handleLogout();
-                      setMobileMenuOpen(false);
-                    }}
-                    className="px-3 py-2 text-left text-gray-700 hover:text-emerald-600 dark:text-gray-300 dark:hover:text-emerald-400"
-                  >
-                    Cerrar Sesión
-                  </button>
-                </>
-              )}
+              <Link
+                href="/firebase-setup"
+                className="px-3 py-2 text-gray-700 hover:text-emerald-600 dark:text-gray-300 dark:hover:text-emerald-400"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Firebase Setup
+              </Link>
+              <Link
+                href="/auth/login"
+                className="px-3 py-2 text-gray-700 hover:text-emerald-600 dark:text-gray-300 dark:hover:text-emerald-400"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Iniciar Sesión
+              </Link>
+              <Link
+                href="/auth/register"
+                className="px-3 py-2 text-gray-700 hover:text-emerald-600 dark:text-gray-300 dark:hover:text-emerald-400"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Registrarse
+              </Link>
             </div>
             <div className="mt-4">
-              <Input
-                type="search"
-                placeholder="Search recipes..."
-                className="w-full"
-              />
+              <form onSubmit={handleSearch}>
+                <div className="relative">
+                  <Input
+                    type="search"
+                    placeholder="Search recipes..."
+                    className="w-full"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                  <button
+                    type="submit"
+                    className="absolute inset-y-0 right-0 flex items-center pr-3"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-4 w-4 text-gray-400 hover:text-emerald-600"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}

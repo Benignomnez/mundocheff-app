@@ -20,6 +20,7 @@ import {
   CalorieRange,
 } from "@/lib/meal-plan";
 import { toast } from "sonner";
+import { ProtectedRoute } from "@/components/auth/protected-route";
 
 export default function OnboardingPage() {
   const [dietary, setDietary] = useState<DietaryPreference[]>([]);
@@ -102,7 +103,7 @@ export default function OnboardingPage() {
 
   if (loadingPreferences) {
     return (
-      <>
+      <ProtectedRoute>
         <Header />
         <main className="container mx-auto px-4 md:px-6 py-12">
           <div className="max-w-md mx-auto text-center">
@@ -110,12 +111,12 @@ export default function OnboardingPage() {
           </div>
         </main>
         <Footer />
-      </>
+      </ProtectedRoute>
     );
   }
 
   return (
-    <>
+    <ProtectedRoute>
       <Header />
       <main className="container mx-auto px-4 md:px-6 py-12">
         <div className="max-w-md mx-auto">
@@ -240,6 +241,6 @@ export default function OnboardingPage() {
         </div>
       </main>
       <Footer />
-    </>
+    </ProtectedRoute>
   );
 }

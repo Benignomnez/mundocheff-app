@@ -1,0 +1,7 @@
+{
+  "hosting": {
+    "site": "mundocheff-31f33",
+    "public": "out",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"]
+  }
+}
